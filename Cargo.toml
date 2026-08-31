@@ -1,0 +1,55 @@
+[package]
+name = "gladia"
+version = "0.1.0"
+authors = ["Oleh Martsokha <o.martsokha@gmail.com>"]
+
+edition = "2024"
+rust-version = "1.91"
+
+description = "An unofficial async Rust client for the Gladia speech-to-text API."
+license = "MIT"
+readme = "README.md"
+keywords = ["gladia", "client", "speech-to-text", "transcription", "asr"]
+categories = ["api-bindings", "web-programming::http-client", "multimedia::audio"]
+
+repository = "https://github.com/martsokha/gladia"
+documentation = "https://docs.rs/gladia"
+
+[features]
+default = ["rustls-tls"]
+
+# HTTPS via Rustls (default).
+rustls-tls = ["reqwest/rustls"]
+# HTTPS via the platform-native TLS stack.
+native-tls = ["reqwest/native-tls"]
+
+# Structured logging and spans over HTTP operations.
+tracing = ["dep:tracing"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+# HTTP transport and middleware.
+reqwest = { version = "0.13", default-features = false, features = ["json", "multipart"] }
+reqwest-middleware = { version = "0.5", features = ["json", "multipart"] }
+reqwest-retry = { version = "0.9" }
+
+# Serialization.
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+jiff = { version = "0.2", features = ["serde"] }
+
+# Bytes for multipart/raw I/O.
+bytes = { version = "1.10" }
+
+# Errors and utilities.
+thiserror = { version = "2.0" }
+url = { version = "2.5" }
+
+# Optional.
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.52", features = ["macros", "rt-multi-thread", "fs", "time"] }
