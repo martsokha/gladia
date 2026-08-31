@@ -19,12 +19,10 @@ documentation = "https://docs.rs/gladia"
 default = ["rustls-tls"]
 
 # HTTPS via Rustls (default).
-rustls-tls = ["reqwest/rustls", "tokio-tungstenite?/rustls-tls-webpki-roots"]
+rustls-tls = ["reqwest/rustls"]
 # HTTPS via the platform-native TLS stack.
-native-tls = ["reqwest/native-tls", "tokio-tungstenite?/native-tls"]
+native-tls = ["reqwest/native-tls"]
 
-# Live transcription over WebSocket (the `live` module).
-live = ["dep:tokio-tungstenite", "dep:futures-util", "dep:tokio"]
 # Structured logging and spans over HTTP operations.
 tracing = ["dep:tracing"]
 
@@ -49,11 +47,6 @@ bytes = { version = "1.10" }
 # Errors and utilities.
 thiserror = { version = "2.0" }
 url = { version = "2.5" }
-
-# Optional: live transcription over WebSocket.
-tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect"], optional = true }
-futures-util = { version = "0.3", default-features = false, features = ["sink"], optional = true }
-tokio = { version = "1.52", default-features = false, optional = true }
 
 # Optional.
 tracing = { version = "0.1", optional = true }

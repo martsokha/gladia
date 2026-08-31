@@ -8,13 +8,17 @@ An unofficial async Rust client for the [Gladia] speech-to-text API ([docs][glad
 
 Gladia transcribes audio in two modes: **pre-recorded**, where a file is uploaded or
 referenced by URL and transcribed asynchronously, and **live**, where audio is streamed
-over a WebSocket and transcripts arrive as the session runs. This crate wraps both over
-one `Arc`-backed client.
+over a WebSocket and transcripts arrive as the session runs.
 
 ## Status
 
-Early development: the client, configuration, and error surface are in place, and the
-endpoint modules are being added. The API is not yet stable.
+Early development, and **no transcription endpoints are implemented yet**. What exists
+today is the foundation they will be built on: an authenticated, retrying HTTP client,
+its configuration, and the error surface. Requests can be made through the `as_client`
+escape hatches in the meantime.
+
+Planned: the pre-recorded endpoints (upload, init, fetch, list, delete), then live
+transcription over WebSocket behind a `live` feature. The API is not yet stable.
 
 ## Usage
 
@@ -56,11 +60,14 @@ header debug output. See [`examples/`](examples/) for runnable examples.
 - **Escape hatches**: `as_client` / `as_client_with_middleware` expose the underlying
   `reqwest` client, pre-authenticated, for requests this crate doesn't yet model.
 
+The API key is sent in a custom `x-gladia-key` header, and `reqwest` strips only a
+fixed set of standard credential headers when a redirect crosses origins. The client
+therefore does not follow redirects at all, so the key cannot reach another host.
+
 These are gated by feature flags:
 
 - `rustls-tls` *(default)*: HTTPS via Rustls.
 - `native-tls`: HTTPS via the platform-native TLS stack.
-- `live`: live transcription over WebSocket.
 - `tracing`: `#[tracing::instrument]` spans on request methods.
 
 ## Changelog

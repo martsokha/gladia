@@ -116,7 +116,8 @@ impl Client {
     ///
     /// Builds the HTTP middleware stack: a per-request timeout enforced by reqwest,
     /// with retries layered on top via reqwest-middleware so each attempt gets its
-    /// own timeout.
+    /// own timeout. Redirects are refused, and the retry layer is installed only when
+    /// retries are enabled.
     pub(crate) fn assemble(
         base_url: String,
         api_key: Option<String>,
@@ -134,17 +135,28 @@ impl Client {
         value.set_sensitive(true);
         headers.insert(API_KEY_HEADER, value);
 
-        let mut http = reqwest::Client::builder().default_headers(headers);
+        // The API key travels in a custom header, and reqwest only strips a fixed set
+        // of credential headers (`Authorization`, `Cookie`, `Proxy-Authorization`,
+        // `WWW-Authenticate`) when a redirect crosses origins — a custom one would be
+        // forwarded. Refusing to follow redirects keeps the key from ever reaching a
+        // host other than the configured one.
+        let mut http = reqwest::Client::builder()
+            .default_headers(headers)
+            .redirect(reqwest::redirect::Policy::none());
         if let Some(timeout) = timeout {
             http = http.timeout(timeout);
         }
         let inner = http.build()?;
 
-        let retry_policy = ExponentialBackoff::builder().build_with_max_retries(max_retries);
-
-        let http = MiddlewareBuilder::new(inner)
-            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-            .build();
+        let mut http = MiddlewareBuilder::new(inner);
+        // `RetryTransientMiddleware` clones the request up front and fails outright on
+        // a streaming body, so with retries disabled it costs a real capability (large
+        // audio uploads) and buys nothing. Only install it when it can actually retry.
+        if max_retries > 0 {
+            let retry_policy = ExponentialBackoff::builder().build_with_max_retries(max_retries);
+            http = http.with(RetryTransientMiddleware::new_with_policy(retry_policy));
+        }
+        let http = http.build();
 
         let mut base_url = Url::parse(&base_url)?;
 
@@ -171,6 +183,17 @@ mod tests {
             .with_base_url(base_url)
             .build()
             .unwrap()
+    }
+
+    #[test]
+    fn retries_can_be_disabled() {
+        // With `max_retries` at 0 the retry middleware is omitted entirely, so it
+        // never clones the request and streaming bodies stay usable.
+        let client = Client::builder()
+            .with_api_key("test-key")
+            .with_max_retries(0u32)
+            .build();
+        assert!(client.is_ok());
     }
 
     #[test]

@@ -16,6 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sensitive.
 - `Error` / `Result` types parsing Gladia's JSON error envelope, including
   `validation_errors`.
-- Feature flags: `rustls-tls` (default), `native-tls`, `live`, `tracing`.
+- Feature flags: `rustls-tls` (default), `native-tls`, `tracing`.
 
 [Unreleased]: https://github.com/martsokha/gladia/compare/HEAD
