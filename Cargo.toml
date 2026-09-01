@@ -15,6 +15,10 @@ categories = ["api-bindings", "web-programming::http-client", "multimedia::audio
 repository = "https://github.com/martsokha/gladia"
 documentation = "https://docs.rs/gladia"
 
+# The vendored API specs and the design notes are references for development, not
+# something every downstream build should pay to download.
+exclude = ["docs/"]
+
 [features]
 default = ["rustls-tls"]
 

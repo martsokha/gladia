@@ -20,6 +20,9 @@ escape hatches in the meantime.
 Planned: the pre-recorded endpoints (upload, init, fetch, list, delete), then live
 transcription over WebSocket behind a `live` feature. The API is not yet stable.
 
+[`docs/DESIGN.md`](docs/DESIGN.md) lays out the intended surface, how it compares to
+the official TypeScript and Python SDKs, and the order the pieces land in.
+
 ## Usage
 
 Add the dependency:
