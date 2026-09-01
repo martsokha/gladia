@@ -12,13 +12,11 @@ over a WebSocket and transcripts arrive as the session runs.
 
 ## Status
 
-Early development, and **no transcription endpoints are implemented yet**. What exists
-today is the foundation they will be built on: an authenticated, retrying HTTP client,
-its configuration, and the error surface. Requests can be made through the `as_client`
-escape hatches in the meantime.
+Early development. Pre-recorded and live transcription are both implemented. The API
+is not yet stable.
 
-Planned: the pre-recorded endpoints (upload, init, fetch, list, delete), then live
-transcription over WebSocket behind a `live` feature. The API is not yet stable.
+[`docs/DESIGN.md`](docs/DESIGN.md) lays out the intended surface, how it compares to
+the official TypeScript and Python SDKs, and the order the pieces land in.
 
 ## Usage
 
@@ -41,17 +39,39 @@ async fn main() -> Result<()> {
         .with_api_key(std::env::var("GLADIA_API_KEY").expect("GLADIA_API_KEY"))
         .build()?;
 
-    println!("{}", client.base_url());
+    let audio = std::fs::read("meeting.wav").expect("readable audio file");
+
+    // Uploads, submits, and polls until the transcription finishes.
+    let job = client
+        .prerecorded()
+        .transcribe_file("meeting.wav", audio, |request| {
+            request.with_sentences().with_diarization_default()
+        })
+        .await?;
+
+    println!("{:#?}", job.result);
     Ok(())
 }
 ```
 
-An API key is required — issue one in the [Gladia dashboard]. It is sent as the
+An API key is required; issue one in the [Gladia dashboard]. It is sent as the
 `x-gladia-key` header on every request, and marked sensitive so it is redacted from
 header debug output. See [`examples/`](examples/) for runnable examples.
 
 ## Features
 
+- **Pre-recorded transcription**: upload a file or point at a URL, then `transcribe_file`
+  in one call. Or drop to `submit` and a `JobHandle` for control over polling, or to
+  the endpoints themselves (`upload_file`, `upload_url`, `init`, `get`, `list`, `delete`).
+- **A request builder that can't contradict itself**: the API pairs each feature with
+  a separate boolean (`diarization` alongside `diarization_config`). One method sets
+  both, so the flag and its config always agree.
+- **Live transcription** (feature `live`): a session is a `Stream` of typed messages,
+  with audio sent through a handle taken from it, so audio and transcripts can be
+  driven from separate tasks. The socket is an upgraded `reqwest` request, so it
+  inherits the client's TLS, proxy, headers, and middleware.
+- **Typed wire types**: generated from Gladia's OpenAPI document, so they track the
+  API rather than drifting from it.
 - **Resilient transport**: exponential-backoff retries via `reqwest-middleware`, an
   optional per-request timeout, custom headers, and a cheap-to-clone `Arc`-backed
   client that shares one connection pool across clones.
@@ -68,6 +88,7 @@ These are gated by feature flags:
 
 - `rustls-tls` *(default)*: HTTPS via Rustls.
 - `native-tls`: HTTPS via the platform-native TLS stack.
+- `live`: live transcription over WebSocket.
 - `tracing`: `#[tracing::instrument]` spans on request methods.
 
 ## Changelog

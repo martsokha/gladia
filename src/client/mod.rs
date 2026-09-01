@@ -2,11 +2,12 @@
 
 mod builder;
 mod headers;
+mod retry;
 
 use std::sync::Arc;
 use std::time::Duration;
 
-use reqwest::Response as ReqwestResponse;
+pub(crate) use reqwest::Response as ReqwestResponse;
 use reqwest_middleware::{
     ClientBuilder as MiddlewareBuilder, ClientWithMiddleware, RequestBuilder,
 };
@@ -16,7 +17,9 @@ use url::Url;
 
 pub use self::builder::ClientBuilder;
 pub(crate) use self::headers::Headers;
+use self::retry::IdempotentOnly;
 use crate::error::{Error, Result};
+use crate::prerecorded::PreRecorded;
 
 /// The header carrying the Gladia API key on every request.
 pub(crate) const API_KEY_HEADER: &str = "x-gladia-key";
@@ -69,7 +72,7 @@ impl Client {
     /// A hidden escape hatch (`#[doc(hidden)]`, not part of the stable API): build any
     /// request against [`base_url`] and send it with the client's configured TLS,
     /// connection pool, and API key. This is the bare client, so it does *not* carry
-    /// the retry middleware — use [`as_client_with_middleware`] to keep retries.
+    /// the retry middleware. Use [`as_client_with_middleware`] to keep retries.
     ///
     /// [`base_url`]: Self::base_url
     /// [`as_client_with_middleware`]: Self::as_client_with_middleware
@@ -92,15 +95,43 @@ impl Client {
         &self.inner.http
     }
 
+    /// Returns a handle to the pre-recorded transcription endpoints.
+    ///
+    /// The handle borrows the client, so it is free to create and can be used inline:
+    /// `client.prerecorded().get(id).await?`.
+    pub fn prerecorded(&self) -> PreRecorded<'_> {
+        PreRecorded::new(self)
+    }
+
+    /// Returns a handle to the live transcription endpoints.
+    #[cfg(feature = "live")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "live")))]
+    pub fn live(&self) -> crate::live::Live<'_> {
+        crate::live::Live::new(self)
+    }
+
     /// Joins a route onto the base URL, tolerating an optional leading slash.
-    #[allow(dead_code, reason = "used by the endpoint modules")]
     pub(crate) fn route_url(&self, route: &str) -> Result<Url> {
         let route = route.trim_start_matches('/');
         Ok(self.inner.base_url.join(route)?)
     }
 
+    /// Begins a `GET` request to `route`.
+    pub(crate) fn get(&self, route: &str) -> Result<RequestBuilder> {
+        Ok(self.inner.http.get(self.route_url(route)?))
+    }
+
+    /// Begins a `POST` request to `route`.
+    pub(crate) fn post(&self, route: &str) -> Result<RequestBuilder> {
+        Ok(self.inner.http.post(self.route_url(route)?))
+    }
+
+    /// Begins a `DELETE` request to `route`.
+    pub(crate) fn delete(&self, route: &str) -> Result<RequestBuilder> {
+        Ok(self.inner.http.delete(self.route_url(route)?))
+    }
+
     /// Sends a request, mapping any non-success status to [`Error::Api`].
-    #[expect(dead_code, reason = "used by the endpoint modules")]
     #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, err))]
     pub(crate) async fn send(&self, req: RequestBuilder) -> Result<ReqwestResponse> {
         let resp = req.send().await?;
@@ -110,6 +141,30 @@ impl Client {
             return Err(Error::api(status.as_u16(), &body));
         }
         Ok(resp)
+    }
+
+    /// Sends a request and deserializes a JSON response body.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all, err))]
+    pub(crate) async fn send_json<T>(&self, req: RequestBuilder) -> Result<T>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let resp = self.send(req).await?;
+        // Read the body before deserializing so a malformed payload can be reported
+        // with the text that failed, rather than just a position.
+        let body = resp
+            .bytes()
+            .await
+            .map_err(reqwest_middleware::Error::from)?;
+        serde_json::from_slice(&body).map_err(|e| {
+            Error::decode(
+                format!(
+                    "unexpected response body: {}",
+                    String::from_utf8_lossy(&body)
+                ),
+                e,
+            )
+        })
     }
 
     /// Assembles a [`Client`] from resolved configuration, used by [`ClientBuilder`].
@@ -137,9 +192,9 @@ impl Client {
 
         // The API key travels in a custom header, and reqwest only strips a fixed set
         // of credential headers (`Authorization`, `Cookie`, `Proxy-Authorization`,
-        // `WWW-Authenticate`) when a redirect crosses origins — a custom one would be
-        // forwarded. Refusing to follow redirects keeps the key from ever reaching a
-        // host other than the configured one.
+        // `WWW-Authenticate`) when a redirect crosses origins, so a custom one would
+        // be forwarded. Refusing to follow redirects keeps the key from ever reaching
+        // a host other than the configured one.
         let mut http = reqwest::Client::builder()
             .default_headers(headers)
             .redirect(reqwest::redirect::Policy::none());
@@ -149,12 +204,13 @@ impl Client {
         let inner = http.build()?;
 
         let mut http = MiddlewareBuilder::new(inner);
-        // `RetryTransientMiddleware` clones the request up front and fails outright on
-        // a streaming body, so with retries disabled it costs a real capability (large
-        // audio uploads) and buys nothing. Only install it when it can actually retry.
+        // `RetryTransientMiddleware` clones the request up front and rejects streaming
+        // bodies, so it is installed only when it can actually retry.
         if max_retries > 0 {
             let retry_policy = ExponentialBackoff::builder().build_with_max_retries(max_retries);
-            http = http.with(RetryTransientMiddleware::new_with_policy(retry_policy));
+            http = http.with(IdempotentOnly::new(
+                RetryTransientMiddleware::new_with_policy(retry_policy),
+            ));
         }
         let http = http.build();
 

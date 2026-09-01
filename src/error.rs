@@ -37,6 +37,47 @@ pub enum Error {
     #[error("http transport error: {0}")]
     Transport(#[from] reqwest_middleware::Error),
 
+    /// A live session failed: the socket could not be opened, a frame could not be
+    /// sent, or the connection broke mid-session.
+    #[cfg(feature = "live")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "live")))]
+    #[error("live session error: {message}")]
+    Live {
+        /// What failed.
+        message: String,
+        /// The underlying cause.
+        #[source]
+        source: Source,
+    },
+
+    /// A transcription job finished in the `error` status.
+    ///
+    /// The request succeeded; the transcription itself did not. Only returned by
+    /// [`JobHandle::into_result`], which opts into treating a failed job as an error.
+    /// [`wait`] returns the failed job instead.
+    ///
+    /// [`JobHandle::into_result`]: crate::prerecorded::JobHandle::into_result
+    /// [`wait`]: crate::prerecorded::JobHandle::wait
+    #[error("transcription job {id} failed{}", match error_code {
+        Some(code) => format!(" with error code {code}"),
+        None => String::new(),
+    })]
+    Job {
+        /// The job's identifier.
+        id: uuid::Uuid,
+        /// The API's error code for the failure, when it provides one.
+        error_code: Option<i64>,
+    },
+
+    /// A job did not reach a terminal status within the allotted time.
+    ///
+    /// The job keeps running on Gladia's side; it can be waited on again.
+    #[error("timed out after {timeout:?} waiting for the job")]
+    Timeout {
+        /// The timeout that elapsed.
+        timeout: std::time::Duration,
+    },
+
     /// The API responded with a non-success status code.
     ///
     /// `message` is the `message` field of Gladia's JSON error envelope when present,
@@ -96,11 +137,19 @@ impl Error {
     }
 
     /// A `Decode` error with a message and a source cause.
-    #[expect(dead_code, reason = "used by the endpoint modules")]
     pub(crate) fn decode(message: impl Into<String>, source: impl Into<Source>) -> Self {
         Self::Decode {
             message: message.into(),
             source: Some(source.into()),
+        }
+    }
+
+    /// A `Live` error with a message and a source cause.
+    #[cfg(feature = "live")]
+    pub(crate) fn live(message: impl Into<String>, source: impl Into<Source>) -> Self {
+        Self::Live {
+            message: message.into(),
+            source: source.into(),
         }
     }
 
