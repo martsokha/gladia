@@ -12,11 +12,13 @@ over a WebSocket and transcripts arrive as the session runs.
 
 ## Status
 
-Early development. Pre-recorded and live transcription are both implemented. The API
-is not yet stable.
+Pre-recorded and live transcription are both covered. Pre-1.0, so the API may still
+change between minor versions.
 
-[`docs/DESIGN.md`](docs/DESIGN.md) lays out the intended surface, how it compares to
-the official TypeScript and Python SDKs, and the order the pieces land in.
+[`docs/DESIGN.md`] explains how the surface is derived from the API, and where it
+departs from the official TypeScript and Python SDKs.
+
+[`docs/DESIGN.md`]: https://github.com/martsokha/gladia/blob/main/docs/DESIGN.md
 
 ## Usage
 
