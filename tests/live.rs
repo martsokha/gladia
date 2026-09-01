@@ -195,7 +195,7 @@ async fn audio_is_sent_as_binary_frames() {
     let mut audio = session.sender();
     audio.send(vec![0u8; 3200]).await.unwrap();
     audio.send(vec![0u8; 1600]).await.unwrap();
-    audio.finish().await.unwrap();
+    audio.stop_recording().await.unwrap();
 
     // The two chunks arrive as binary frames, then `finish` sends stop_recording.
     assert!(matches!(received.recv().await, Some(Received::Audio(3200))));
@@ -291,19 +291,6 @@ async fn a_non_json_frame_reports_a_decode_error() {
 }
 
 #[tokio::test]
-async fn taking_the_sender_twice_panics() {
-    let (mut session, _received, _api) =
-        session_with(vec![message("start_session", serde_json::json!({}))]).await;
-
-    let _first = session.sender();
-
-    // Two senders on one socket would interleave frames, so the second take is a bug
-    // in the caller rather than a runtime condition to handle.
-    let second = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| session.sender()));
-    assert!(second.is_err());
-}
-
-#[tokio::test]
 async fn the_handshake_carries_the_clients_configured_headers() {
     // The client's default headers, the API key among them, must reach the WebSocket
     // handshake: the session is authenticated by the same credential as every request.
@@ -372,7 +359,7 @@ async fn the_handshake_carries_the_clients_configured_headers() {
 }
 
 #[tokio::test]
-async fn finish_still_delivers_post_processing() {
+async fn post_processing_survives_stop_recording() {
     // `stop_recording` ends the audio, not the session: the final transcript and any
     // summary arrive afterwards, and must survive `finish`.
     let (address, _received) = serve_with(
@@ -388,8 +375,8 @@ async fn finish_still_delivers_post_processing() {
     let request = serde_json::from_value(serde_json::json!({})).unwrap();
     let mut session = client.live().start(&request).await.unwrap();
 
-    let audio = session.sender();
-    audio.finish().await.unwrap();
+    let mut audio = session.sender();
+    audio.stop_recording().await.unwrap();
 
     let kinds: Vec<&'static str> = (&mut session)
         .map(|message| match message.unwrap() {

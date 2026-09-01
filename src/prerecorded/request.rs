@@ -50,11 +50,11 @@ pub struct TranscriptionRequest {
 impl TranscriptionRequest {
     /// Starts a request for the audio at `audio_url`.
     ///
-    /// The URL is either one returned by [`PreRecorded::upload`], or any URL Gladia can
+    /// The URL is either one returned by [`PreRecorded::upload_file`], or any URL Gladia can
     /// fetch (an S3 link, a public file). Every other field is left unset, so the API's
     /// own defaults apply.
     ///
-    /// [`PreRecorded::upload`]: super::PreRecorded::upload
+    /// [`PreRecorded::upload_file`]: super::PreRecorded::upload_file
     pub fn new(audio_url: impl Into<String>) -> Self {
         Self {
             inner: InitTranscriptionRequest {

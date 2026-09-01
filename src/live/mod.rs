@@ -77,7 +77,7 @@ impl<'a> Live<'a> {
     /// let mut audio = session.sender();
     ///
     /// audio.send(vec![0u8; 3200]).await?;
-    /// audio.finish().await?;   // stops recording; the session stays open
+    /// audio.stop_recording().await?;   // the session stays open
     ///
     /// while let Some(message) = session.next().await {
     ///     println!("{:?}", message?);
@@ -121,13 +121,9 @@ impl<'a> Live<'a> {
     pub async fn connect(&self, created: &InitStreamingResponse) -> Result<Session> {
         // The socket is an upgraded request from the client's middleware stack, so the
         // handshake carries its TLS backend, proxy, default headers, and middleware.
-        let socket = self
-            .client
-            .as_client_with_middleware()
-            .get(created.url.as_str())
-            .upgrade()
-            .send()
-            .await
+        let client = self.client.as_client_with_middleware();
+        let response = client.get(created.url.as_str()).upgrade().send().await;
+        let socket = response
             .map_err(|e| Error::live("could not open the live session", e))?
             .into_websocket()
             .await

@@ -68,7 +68,7 @@ async fn upload_posts_multipart_with_the_api_key() {
 
     let response = client(&server)
         .prerecorded()
-        .upload("meeting.wav", &b"abc"[..])
+        .upload_file("meeting.wav", &b"abc"[..])
         .await
         .unwrap();
 
@@ -486,7 +486,7 @@ async fn transcribe_uploads_submits_and_waits() {
 
     let job = client(&server)
         .prerecorded()
-        .transcribe("meeting.wav", &b"abc"[..], |request| {
+        .transcribe_file("meeting.wav", &b"abc"[..], |request| {
             request
                 .with_diarization(
                     DiarizationConfigDto::builder()
@@ -558,7 +558,7 @@ async fn a_failed_upload_is_not_retried() {
 
     let error = client
         .prerecorded()
-        .upload("meeting.wav", &b"abc"[..])
+        .upload_file("meeting.wav", &b"abc"[..])
         .await
         .unwrap_err();
 

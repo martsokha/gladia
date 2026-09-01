@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     // Uploads, submits, and polls every three seconds until the job finishes.
     let job = client
         .prerecorded()
-        .transcribe(filename, audio, |request| {
+        .transcribe_file(filename, audio, |request| {
             request.with_sentences().with_diarization_default()
         })
         .await?;

@@ -61,7 +61,7 @@ Worth keeping:
 - **A root client that vends sub-clients per domain.** Pre-recorded and live share
   credentials and transport but have disjoint operations. Nesting them keeps
   completion lists short and makes the two flows hard to confuse.
-- **`transcribe()` as the headline method.** The raw flow is upload → init → poll →
+- **`transcribe_file()` as the headline method.** The raw flow is upload_file → init → poll →
   read. Most callers want exactly that, once. Both SDKs collapse it into one call, and
   it is the first thing in both READMEs.
 - **Versioned names (`preRecordedV2`).** The API has already deprecated
@@ -128,7 +128,7 @@ generated type stays public and `serde`-serializable, reachable through `build()
 
 ### Three levels, not one
 
-The official SDKs expose `create`, `poll`, `createAndPoll`, and `transcribe` as four
+The official SDKs expose `create`, `poll`, `createAndPoll`, and `transcribe_file` as four
 peers on one client. The relationship between them is only in the docs. Making the
 layering explicit means each level is a complete API and the level above is a thin
 convenience:
@@ -137,7 +137,7 @@ convenience:
 // 1. one call, the common case: upload, init, poll, return
 let job = gladia
     .prerecorded()
-    .transcribe("meeting.wav", audio, |request| request.with_sentences())
+    .transcribe_file("meeting.wav", audio, |request| request.with_sentences())
     .await?;
 
 // 2. submit and poll separately, for a queue or a progress bar
@@ -145,7 +145,7 @@ let handle = gladia.prerecorded().submit(&request).await?;
 let job = handle.wait_with(interval, Some(deadline)).await?;
 
 // 3. the endpoints themselves
-let upload = gladia.prerecorded().upload("meeting.wav", audio).await?;
+let upload = gladia.prerecorded().upload_file("meeting.wav", audio).await?;
 let submitted = gladia.prerecorded().init(&request).await?;
 let job = gladia.prerecorded().get(submitted.id).await?;
 ```
@@ -251,7 +251,7 @@ not yet implemented: more media types than expected for FileController_upload_v2
 
 That is `POST /v2/upload`, which accepts both `multipart/form-data` and
 `application/json`. Removing the endpoint just moves the failure to
-`unexpected content type: multipart/form-data`. Progenitor cannot express file upload,
+`unexpected content type: multipart/form-data`. Progenitor cannot express file upload_file,
 which is the one operation this API is built around.
 
 **[`typify`], chosen.** Progenitor's schema half, used on its own. Fed

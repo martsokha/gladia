@@ -31,7 +31,7 @@ type Socket = WebSocket;
 ///     for chunk in chunks {
 ///         audio.send(chunk).await?;
 ///     }
-///     audio.finish().await
+///     audio.stop_recording().await
 /// });
 ///
 /// while let Some(message) = session.next().await {
@@ -57,10 +57,10 @@ pub struct Session {
 /// Sends audio into a live session.
 ///
 /// Taken from [`Session::sender`], and independent of the session's stream, so it can
-/// be moved into another task. Dropping it does not end the session; call [`finish`]
-/// to tell the server no more audio is coming.
+/// be moved into another task. Dropping it does not end the session; call
+/// [`stop_recording`] to tell the server no more audio is coming.
 ///
-/// [`finish`]: AudioSender::finish
+/// [`stop_recording`]: AudioSender::stop_recording
 #[derive(Debug)]
 pub struct AudioSender {
     outgoing: SplitSink<Socket, WsMessage>,
@@ -121,11 +121,17 @@ impl AudioSender {
             .map_err(|e| Error::live("could not send audio", e))
     }
 
-    /// Tells the server that recording has stopped, so it can finish processing.
+    /// Tells the server that no more audio is coming, so it can finish processing.
     ///
-    /// The session stays open: the server still sends the post-processing messages
-    /// (the final transcript, any summary) before [`Message::EndSession`]. Keep reading
-    /// the session's stream until it ends.
+    /// The session stays open. The server still sends the post-processing messages,
+    /// the final transcript and any summary, and then closes the session itself with
+    /// [`Message::EndSession`]. Keep reading the session's stream until it ends.
+    ///
+    /// There is deliberately no method here that closes the socket. WebSocket has no
+    /// half-close: a Close frame ends the connection in both directions, and a peer
+    /// that receives one discards anything still in flight, so sending one would drop
+    /// the very results this waits for. Dropping the sender is equally safe, and
+    /// equally does not end the session.
     pub async fn stop_recording(&mut self) -> Result<()> {
         let stop = serde_json::json!({ "type": "stop_recording" });
 
@@ -133,23 +139,6 @@ impl AudioSender {
             .send(WsMessage::Text(stop.to_string()))
             .await
             .map_err(|e| Error::live("could not stop recording", e))
-    }
-
-    /// Tells the server no more audio is coming, and gives up the sender.
-    ///
-    /// The same request as [`stop_recording`], but it consumes the sender, so it reads
-    /// as the end of the sending half at a call site that has nothing more to send.
-    ///
-    /// The session stays open either way. WebSocket has no half-close: a Close frame
-    /// ends the connection in both directions, and a peer that receives one discards
-    /// anything still in flight, so sending one here would drop the final transcript
-    /// and any summary. The server closes the session itself once post-processing is
-    /// done, which arrives as [`Message::EndSession`]. Keep reading the session's
-    /// stream until it ends.
-    ///
-    /// [`stop_recording`]: Self::stop_recording
-    pub async fn finish(mut self) -> Result<()> {
-        self.stop_recording().await
     }
 }
 

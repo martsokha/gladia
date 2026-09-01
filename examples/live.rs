@@ -70,8 +70,8 @@ async fn main() -> Result<()> {
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
 
-        // Stops recording; the server closes the session once post-processing is done.
-        if let Err(e) = sender.finish().await {
+        // The server closes the session itself once post-processing is done.
+        if let Err(e) = sender.stop_recording().await {
             eprintln!("failed to stop recording: {e}");
         }
     });

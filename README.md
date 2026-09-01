@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     // Uploads, submits, and polls until the transcription finishes.
     let job = client
         .prerecorded()
-        .transcribe("meeting.wav", audio, |request| {
+        .transcribe_file("meeting.wav", audio, |request| {
             request.with_sentences().with_diarization_default()
         })
         .await?;
@@ -60,9 +60,9 @@ header debug output. See [`examples/`](examples/) for runnable examples.
 
 ## Features
 
-- **Pre-recorded transcription**: upload a file or point at a URL, then `transcribe`
+- **Pre-recorded transcription**: upload a file or point at a URL, then `transcribe_file`
   in one call. Or drop to `submit` and a `JobHandle` for control over polling, or to
-  the endpoints themselves (`upload`, `init`, `get`, `list`, `delete`, `file`).
+  the endpoints themselves (`upload_file`, `upload_url`, `init`, `get`, `list`, `delete`).
 - **A request builder that can't contradict itself**: the API pairs each feature with
   a separate boolean (`diarization` alongside `diarization_config`). One method sets
   both, so the flag and its config always agree.

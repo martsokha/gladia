@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `reqwest-middleware` stack, with `x-gladia-key` authentication, exponential-backoff
   retries, an optional per-request timeout, and custom headers.
 - `Client::prerecorded()`, covering the pre-recorded transcription endpoints:
-  `upload`, `upload_url`, `init`, `get`, `list`, `delete`, and `file`.
-- `PreRecorded::transcribe` and `transcribe_url`, which upload, submit, and poll in
+  `upload_file`, `upload_url`, `init`, `get`, `list`, `delete`, and `file`.
+- `PreRecorded::transcribe_file` and `transcribe_url`, which upload, submit, and poll in
   one call.
 - `PreRecorded::submit` and `job`, returning a `JobHandle` that polls to completion
   with `wait` / `wait_with`, or `into_result` to treat a failed transcription as an

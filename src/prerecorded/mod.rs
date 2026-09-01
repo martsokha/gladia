@@ -5,7 +5,7 @@
 //!
 //! | Method | Endpoint |
 //! | --- | --- |
-//! | [`upload`] | `POST /v2/upload` |
+//! | [`upload_file`] | `POST /v2/upload` |
 //! | [`upload_url`] | `POST /v2/upload` |
 //! | [`init`] / [`submit`] | `POST /v2/pre-recorded` |
 //! | [`get`] | `GET /v2/pre-recorded/{id}` |
@@ -21,7 +21,7 @@
 //! [`wait`]: JobHandle::wait
 //!
 //! [`Client::prerecorded`]: crate::Client::prerecorded
-//! [`upload`]: PreRecorded::upload
+//! [`upload_file`]: PreRecorded::upload_file
 //! [`upload_url`]: PreRecorded::upload_url
 //! [`init`]: PreRecorded::init
 //! [`submit`]: PreRecorded::submit
@@ -82,7 +82,7 @@ impl<'a> PreRecorded<'a> {
     /// [`init`]: Self::init
     /// [`upload_url`]: Self::upload_url
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, audio), err))]
-    pub async fn upload(
+    pub async fn upload_file(
         &self,
         filename: impl Into<String> + std::fmt::Debug,
         audio: impl Into<Bytes>,
@@ -166,8 +166,8 @@ impl<'a> PreRecorded<'a> {
 
     /// Uploads audio, transcribes it, and waits for the result.
     ///
-    /// The whole flow in one call: [`upload`], then [`submit`], then [`wait`]. For
-    /// audio already reachable by URL, use [`transcribe_url`] and skip the upload.
+    /// The whole flow in one call: [`upload_file`], then [`submit`], then [`wait`]. For
+    /// audio already reachable by URL, use [`transcribe_url`] and skip the upload_file.
     ///
     /// ```no_run
     /// # use gladia::prelude::*;
@@ -175,7 +175,7 @@ impl<'a> PreRecorded<'a> {
     /// let audio = std::fs::read("meeting.wav").expect("readable audio file");
     /// let job = client
     ///     .prerecorded()
-    ///     .transcribe("meeting.wav", audio, |request| request.with_sentences())
+    ///     .transcribe_file("meeting.wav", audio, |request| request.with_sentences())
     ///     .await?;
     /// # let _ = job;
     /// # Ok(())
@@ -190,7 +190,7 @@ impl<'a> PreRecorded<'a> {
     /// Use [`submit`] and [`JobHandle::into_result`] to treat that as an error instead.
     /// For control over polling, use [`submit`] and [`JobHandle::wait_with`].
     ///
-    /// [`upload`]: Self::upload
+    /// [`upload_file`]: Self::upload_file
     /// [`submit`]: Self::submit
     /// [`wait`]: JobHandle::wait
     /// [`transcribe_url`]: Self::transcribe_url
@@ -198,24 +198,24 @@ impl<'a> PreRecorded<'a> {
         feature = "tracing",
         tracing::instrument(skip(self, audio, configure), err)
     )]
-    pub async fn transcribe(
+    pub async fn transcribe_file(
         &self,
         filename: impl Into<String> + std::fmt::Debug,
         audio: impl Into<Bytes>,
         configure: impl FnOnce(TranscriptionRequest) -> TranscriptionRequest,
     ) -> Result<PreRecordedResponse> {
-        let upload = self.upload(filename, audio).await?;
+        let upload = self.upload_file(filename, audio).await?;
 
         self.transcribe_url(upload.audio_url, configure).await
     }
 
     /// Transcribes audio already reachable by URL, and waits for the result.
     ///
-    /// Like [`transcribe`], without the upload: `audio_url` is either one returned by
-    /// [`upload`] or any URL Gladia can fetch.
+    /// Like [`transcribe_file`], without the upload_file: `audio_url` is either one returned by
+    /// [`upload_file`] or any URL Gladia can fetch.
     ///
-    /// [`transcribe`]: Self::transcribe
-    /// [`upload`]: Self::upload
+    /// [`transcribe_file`]: Self::transcribe_file
+    /// [`upload_file`]: Self::upload_file
     #[cfg_attr(
         feature = "tracing",
         tracing::instrument(skip(self, audio_url, configure), err)
