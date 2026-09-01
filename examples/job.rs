@@ -10,6 +10,7 @@
 
 use std::time::Duration;
 
+use gladia::model::PreRecordedResponseStatus;
 use gladia::prelude::*;
 use uuid::Uuid;
 
@@ -37,12 +38,18 @@ async fn main() -> Result<()> {
         "collect" => {
             let id: Uuid = argument.parse().expect("a job id");
 
-            // `into_result` treats a failed transcription as an error, rather than
-            // returning a job the caller has to inspect.
             let job = prerecorded
                 .job(id)
                 .wait_with(Duration::from_secs(5), Some(Duration::from_secs(600)))
                 .await?;
+
+            // `wait_with` returns a failed job like any other, so the status decides
+            // whether there is a result to print. `into_result` would raise it as an
+            // error instead, at the cost of the polling interval chosen here.
+            if job.status == PreRecordedResponseStatus::Error {
+                eprintln!("transcription failed (error_code {:?})", job.error_code);
+                return Ok(());
+            }
 
             println!("{}", serde_json::to_string_pretty(&job.result).unwrap());
         }

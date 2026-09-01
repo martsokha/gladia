@@ -534,3 +534,101 @@ async fn transcribe_url_skips_the_upload() {
 
     assert_eq!(job.status, PreRecordedResponseStatus::Done);
 }
+
+#[tokio::test]
+async fn a_failed_upload_is_not_retried() {
+    let server = MockServer::start().await;
+
+    // A 503 is transient, so the default retry strategy would replay it. Gladia's
+    // POST endpoints create things and take no idempotency key, so a replay that
+    // lands after the first attempt was processed leaves a duplicate.
+    Mock::given(method("POST"))
+        .and(path("/v2/upload"))
+        .respond_with(ResponseTemplate::new(503))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let client = Client::builder()
+        .with_api_key("test-key")
+        .with_base_url(server.uri())
+        .with_max_retries(3u32)
+        .build()
+        .unwrap();
+
+    let error = client
+        .prerecorded()
+        .upload("meeting.wav", &b"abc"[..])
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.status(), Some(503));
+}
+
+#[tokio::test]
+async fn a_failed_get_is_retried() {
+    let server = MockServer::start().await;
+
+    // GET is idempotent, so a transient failure is worth replaying.
+    Mock::given(method("GET"))
+        .and(path(format!("/v2/pre-recorded/{JOB_ID}")))
+        .respond_with(ResponseTemplate::new(503))
+        .up_to_n_times(2)
+        .expect(2)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path(format!("/v2/pre-recorded/{JOB_ID}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(job_body("done")))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let client = Client::builder()
+        .with_api_key("test-key")
+        .with_base_url(server.uri())
+        .with_max_retries(3u32)
+        .build()
+        .unwrap();
+
+    let job = client
+        .prerecorded()
+        .get(Uuid::parse_str(JOB_ID).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(job.status, PreRecordedResponseStatus::Done);
+}
+
+#[tokio::test]
+async fn a_slow_poll_cannot_outlast_the_deadline() {
+    let server = MockServer::start().await;
+
+    // The response takes far longer than the deadline allows, so the deadline has to
+    // bound the in-flight request rather than only the gap between polls.
+    Mock::given(method("GET"))
+        .and(path(format!("/v2/pre-recorded/{JOB_ID}")))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(job_body("processing"))
+                .set_delay(Duration::from_secs(30)),
+        )
+        .mount(&server)
+        .await;
+
+    let started = std::time::Instant::now();
+    let error = client(&server)
+        .prerecorded()
+        .job(Uuid::parse_str(JOB_ID).unwrap())
+        .wait_with(Duration::from_millis(1), Some(Duration::from_millis(50)))
+        .await
+        .unwrap_err();
+
+    assert!(matches!(error, Error::Timeout { .. }), "{error:?}");
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "the deadline did not bound the request: {:?}",
+        started.elapsed()
+    );
+}

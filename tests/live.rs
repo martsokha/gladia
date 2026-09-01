@@ -30,22 +30,34 @@ enum Received {
 ///
 /// Returns the address to connect to and a channel of received frames.
 async fn serve(script: Vec<serde_json::Value>) -> (SocketAddr, mpsc::UnboundedReceiver<Received>) {
+    serve_with(script, Vec::new()).await
+}
+
+/// Like [`serve`], but holds `after_stop` back until `stop_recording` arrives.
+async fn serve_with(
+    script: Vec<serde_json::Value>,
+    after_stop: Vec<serde_json::Value>,
+) -> (SocketAddr, mpsc::UnboundedReceiver<Received>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
     let (sender, receiver) = mpsc::unbounded_channel();
 
     tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        handle(stream, script, sender).await;
+        handle(stream, script, after_stop, sender).await;
     });
 
     (address, receiver)
 }
 
 /// Accepts one connection, sends the scripted messages, and reports what arrives.
+///
+/// Messages in `after_stop` are held back until the client sends `stop_recording`,
+/// which is when a real server produces its post-processing results.
 async fn handle(
     stream: TcpStream,
     script: Vec<serde_json::Value>,
+    after_stop: Vec<serde_json::Value>,
     sender: mpsc::UnboundedSender<Received>,
 ) {
     let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
@@ -68,8 +80,22 @@ async fn handle(
             _ => continue,
         };
 
+        let stopped = matches!(&received, Received::Control(kind) if kind == "stop_recording");
+
         if sender.send(received).is_err() {
             break;
+        }
+
+        if stopped {
+            // A real server needs a moment to finish post-processing.
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+            for message in &after_stop {
+                let frame = WsMessage::Text(message.to_string().into());
+                if socket.send(frame).await.is_err() {
+                    return;
+                }
+            }
         }
     }
 }
@@ -343,4 +369,38 @@ async fn the_handshake_carries_the_clients_configured_headers() {
 
     assert_eq!(find("x-gladia-key").as_deref(), Some("test-key"));
     assert_eq!(find("x-trace-id").as_deref(), Some("abc123"));
+}
+
+#[tokio::test]
+async fn finish_still_delivers_post_processing() {
+    // `stop_recording` ends the audio, not the session: the final transcript and any
+    // summary arrive afterwards, and must survive `finish`.
+    let (address, _received) = serve_with(
+        vec![message("start_session", serde_json::json!({}))],
+        vec![
+            message("post_final_transcript", serde_json::json!({ "data": {} })),
+            message("post_summarization", serde_json::json!({ "data": {} })),
+            message("end_session", serde_json::json!({})),
+        ],
+    )
+    .await;
+    let (client, _api) = client_for(address).await;
+    let request = serde_json::from_value(serde_json::json!({})).unwrap();
+    let mut session = client.live().start(&request).await.unwrap();
+
+    let audio = session.sender();
+    audio.finish().await.unwrap();
+
+    let kinds: Vec<&'static str> = (&mut session)
+        .map(|message| match message.unwrap() {
+            Message::StartSession(_) => "start",
+            Message::PostFinalTranscript(_) => "post_final",
+            Message::PostSummarization(_) => "post_summary",
+            Message::EndSession(_) => "end",
+            _ => "other",
+        })
+        .collect()
+        .await;
+
+    assert_eq!(kinds, ["start", "post_final", "post_summary", "end"]);
 }

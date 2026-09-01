@@ -180,7 +180,7 @@ impl AudioChunkAckData {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data. \"null\" if the action was not successfully acknowledged",
@@ -899,7 +899,7 @@ impl AudioUploadResponse {
 ///    "timestamp": {
 ///      "description": "Date of when the error occurred",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    },
 ///    "validation_errors": {
 ///      "description": "List of validation errors, if any",
@@ -4085,7 +4085,7 @@ impl DisplayModeDto {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data",
@@ -4266,7 +4266,7 @@ impl ::std::default::Default for EndRecordingMessageType {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "session_id": {
 ///      "description": "Id of the live session",
@@ -4570,7 +4570,7 @@ impl FileResponse {
 ///    "timestamp": {
 ///      "description": "Date of when the error occurred",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    }
 ///  }
 ///}
@@ -4696,7 +4696,7 @@ impl InitPreRecordedTranscriptionResponse {
 ///      "description": "Creation date",
 ///      "type": "string",
 ///      "format": "date-time",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    },
 ///    "id": {
 ///      "description": "Id of the job",
@@ -5768,7 +5768,7 @@ impl NamedEntityRecognitionDto {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data. \"null\" if the addon failed",
@@ -6071,7 +6071,7 @@ impl NamesConsistencyDto {
 ///    "timestamp": {
 ///      "description": "Date of when the error occurred",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    }
 ///  }
 ///}
@@ -6178,7 +6178,7 @@ for PatchRequestParamsDto {
 ///    "timestamp": {
 ///      "description": "Date of when the error occurred",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    }
 ///  }
 ///}
@@ -6861,7 +6861,7 @@ impl ::std::convert::TryFrom<::std::string::String> for PiiRedactionEntityTypeEn
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data",
@@ -7069,7 +7069,7 @@ impl PostProcessingConfig {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data. \"null\" if the addon failed",
@@ -7267,7 +7267,7 @@ impl ::std::default::Default for PostSummarizationMessageType {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data",
@@ -7760,14 +7760,14 @@ impl PreRecordedRequestParamsResponse {
 ///      "description": "Completion date when status is \"done\" or \"error\"",
 ///      "type": "string",
 ///      "format": "date-time",
-///      "example": "2026-01-01T00:00:00.000Z",
+///      "example": "2023-12-28T09:04:37.210Z",
 ///      "nullable": true
 ///    },
 ///    "created_at": {
 ///      "description": "Creation date",
 ///      "type": "string",
 ///      "format": "date-time",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    },
 ///    "custom_metadata": {
 ///      "description": "Custom metadata given in the initial request",
@@ -8398,7 +8398,7 @@ impl SentimentAnalysisDto {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data. \"null\" if the addon failed",
@@ -8618,7 +8618,7 @@ impl SentimentAnalysisResult {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data",
@@ -8807,7 +8807,7 @@ impl SpeechMessageData {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data",
@@ -8954,7 +8954,7 @@ impl ::std::default::Default for SpeechStartMessageType {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "session_id": {
 ///      "description": "Id of the live session",
@@ -9091,7 +9091,7 @@ impl ::std::default::Default for StartRecordingMessageType {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "session_id": {
 ///      "description": "Id of the live session",
@@ -9277,7 +9277,7 @@ impl StopRecordingAckData {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data. \"null\" if the action was not successfully acknowledged",
@@ -9964,14 +9964,14 @@ impl StreamingRequestParamsResponse {
 ///      "description": "Completion date when status is \"done\" or \"error\"",
 ///      "type": "string",
 ///      "format": "date-time",
-///      "example": "2026-01-01T00:00:00.000Z",
+///      "example": "2023-12-28T09:04:37.210Z",
 ///      "nullable": true
 ///    },
 ///    "created_at": {
 ///      "description": "Creation date",
 ///      "type": "string",
 ///      "format": "date-time",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    },
 ///    "custom_metadata": {
 ///      "description": "Custom metadata given in the initial request",
@@ -11437,7 +11437,7 @@ impl ::std::convert::TryFrom<::std::string::String> for SummaryTypesEnum {
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data",
@@ -13408,7 +13408,7 @@ impl ::std::convert::TryFrom<::std::string::String> for TranslationLanguageCodeE
 ///    "created_at": {
 ///      "description": "Date of creation of the message. The date is formatted as an ISO 8601 string",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2021-09-01T12:00:00.123Z"
 ///    },
 ///    "data": {
 ///      "description": "The message data. \"null\" if the addon failed",
@@ -13769,7 +13769,7 @@ impl TranslationResultDto {
 ///    "timestamp": {
 ///      "description": "Date of when the error occurred",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    }
 ///  }
 ///}
@@ -13836,7 +13836,7 @@ impl UnauthorizedErrorResponse {
 ///    "timestamp": {
 ///      "description": "Date of when the error occurred",
 ///      "type": "string",
-///      "example": "2026-01-01T00:00:00.000Z"
+///      "example": "2023-12-28T09:04:17.210Z"
 ///    }
 ///  }
 ///}

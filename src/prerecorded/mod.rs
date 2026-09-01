@@ -109,11 +109,10 @@ impl<'a> PreRecorded<'a> {
     /// `POST /v2/upload`
     ///
     /// [`init`]: Self::init
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err))]
-    pub async fn upload_url(
-        &self,
-        audio_url: impl Into<String> + std::fmt::Debug,
-    ) -> Result<AudioUploadResponse> {
+    // A signed URL carries its credential in the query string, so it is kept out of
+    // the span rather than recorded as a field.
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, audio_url), err))]
+    pub async fn upload_url(&self, audio_url: impl Into<String>) -> Result<AudioUploadResponse> {
         let body = serde_json::json!({ "audio_url": audio_url.into() });
         let req = self.client.post("v2/upload")?.json(&body);
 
@@ -217,10 +216,13 @@ impl<'a> PreRecorded<'a> {
     ///
     /// [`transcribe`]: Self::transcribe
     /// [`upload`]: Self::upload
-    #[cfg_attr(feature = "tracing", tracing::instrument(skip(self, configure), err))]
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip(self, audio_url, configure), err)
+    )]
     pub async fn transcribe_url(
         &self,
-        audio_url: impl Into<String> + std::fmt::Debug,
+        audio_url: impl Into<String>,
         configure: impl FnOnce(TranscriptionRequest) -> TranscriptionRequest,
     ) -> Result<PreRecordedResponse> {
         let request = configure(TranscriptionRequest::new(audio_url)).build();

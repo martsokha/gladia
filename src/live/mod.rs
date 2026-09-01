@@ -39,7 +39,9 @@ pub use self::message::{Ack, Envelope, Message, Payload};
 pub use self::session::{AudioSender, Session};
 use crate::client::Client;
 use crate::error::{Error, Result};
-use crate::model::{InitStreamingResponse, ListStreamingResponse, StreamingRequest};
+use crate::model::{
+    InitStreamingResponse, ListStreamingResponse, StreamingRequest, StreamingResponse,
+};
 use crate::prerecorded::ListQuery;
 
 /// The live transcription endpoints.
@@ -75,7 +77,7 @@ impl<'a> Live<'a> {
     /// let mut audio = session.sender();
     ///
     /// audio.send(vec![0u8; 3200]).await?;
-    /// audio.finish().await?;
+    /// audio.finish().await?;   // stops recording; the session stays open
     ///
     /// while let Some(message) = session.next().await {
     ///     println!("{:?}", message?);
@@ -138,7 +140,7 @@ impl<'a> Live<'a> {
     ///
     /// `GET /v2/live/{id}`
     #[cfg_attr(feature = "tracing", tracing::instrument(skip(self), err))]
-    pub async fn get(&self, id: Uuid) -> Result<serde_json::Value> {
+    pub async fn get(&self, id: Uuid) -> Result<StreamingResponse> {
         let req = self.client.get(&format!("{ROUTE}/{id}"))?;
 
         self.client.send_json(req).await

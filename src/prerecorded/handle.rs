@@ -107,24 +107,39 @@ impl JobHandle {
         timeout: Option<Duration>,
     ) -> Result<PreRecordedResponse> {
         let deadline = timeout.map(|timeout| Instant::now() + timeout);
+        let expired = || Error::Timeout {
+            timeout: timeout.expect("a deadline implies a timeout"),
+        };
 
         loop {
-            let job = self.poll().await?;
+            // The request itself is bounded by whatever remains, so a server that
+            // stops responding cannot outlast the deadline.
+            let job = match deadline {
+                Some(deadline) => {
+                    let remaining = deadline.saturating_duration_since(Instant::now());
+                    if remaining.is_zero() {
+                        return Err(expired());
+                    }
+                    match tokio::time::timeout(remaining, self.poll()).await {
+                        Ok(job) => job?,
+                        Err(_) => return Err(expired()),
+                    }
+                }
+                None => self.poll().await?,
+            };
+
             if is_terminal(job.status) {
                 return Ok(job);
             }
 
-            // Check the deadline after polling, so a job that completes on the last
-            // attempt is returned rather than reported as a timeout.
+            // The deadline is checked after polling, so a job that completes on the
+            // last attempt is returned rather than reported as a timeout.
             if let Some(deadline) = deadline {
-                let now = Instant::now();
-                if now >= deadline {
-                    return Err(Error::Timeout {
-                        timeout: timeout.expect("a deadline implies a timeout"),
-                    });
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return Err(expired());
                 }
                 // Never sleep past the deadline.
-                let remaining = deadline - now;
                 tokio::time::sleep(interval.min(remaining)).await;
             } else {
                 tokio::time::sleep(interval).await;

@@ -30,7 +30,7 @@ pub struct ListQuery {
     before_date: Option<DateTime<Utc>>,
     after_date: Option<DateTime<Utc>>,
     status: Vec<PreRecordedResponseStatus>,
-    custom_metadata: Option<serde_json::Value>,
+    custom_metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl ListQuery {
@@ -79,7 +79,10 @@ impl ListQuery {
     ///
     /// The value is the metadata passed to
     /// [`InitTranscriptionRequest::custom_metadata`](crate::model::InitTranscriptionRequest).
-    pub fn with_custom_metadata(mut self, metadata: serde_json::Value) -> Self {
+    pub fn with_custom_metadata(
+        mut self,
+        metadata: serde_json::Map<String, serde_json::Value>,
+    ) -> Self {
         self.custom_metadata = Some(metadata);
         self
     }
@@ -108,7 +111,10 @@ impl ListQuery {
             query.append_pair("status", &status.to_string());
         }
         if let Some(metadata) = &self.custom_metadata {
-            query.append_pair("custom_metadata", &metadata.to_string());
+            query.append_pair(
+                "custom_metadata",
+                &serde_json::Value::Object(metadata.clone()).to_string(),
+            );
         }
     }
 }
@@ -157,8 +163,9 @@ mod tests {
 
     #[test]
     fn custom_metadata_is_sent_as_json() {
-        let query =
-            ListQuery::default().with_custom_metadata(serde_json::json!({ "team": "research" }));
+        let mut metadata = serde_json::Map::new();
+        metadata.insert("team".to_owned(), serde_json::json!("research"));
+        let query = ListQuery::default().with_custom_metadata(metadata);
         assert_eq!(
             query_of(&query),
             "custom_metadata=%7B%22team%22%3A%22research%22%7D"

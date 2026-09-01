@@ -539,9 +539,11 @@ dependencies = [
 name = "gladia"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "chrono",
  "futures-util",
+ "http",
  "reqwest",
  "reqwest-middleware",
  "reqwest-retry",

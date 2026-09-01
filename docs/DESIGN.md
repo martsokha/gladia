@@ -290,12 +290,12 @@ That is an eight-line preprocessing step in the xtask, and it means **requests a
 generated too**, with no hand-written mirror of the wire types and no drift between
 them and the spec.
 
-What stays hand-written is only the thin layer above: `PreRecordedRequest` wrapping the
-generated `InitTranscriptionRequest` so that `diarization(Diarization::new().max_speakers(4))`
-sets both the flag and the config. The generated builder can express that, just
-verbosely, as `.diarization(Some(true)).diarization_config(Some(...))`, and it cannot
-enforce that the two agree. That is a wrapper over one generated type, not a parallel
-set of types.
+What stays hand-written is only the thin layer above: `TranscriptionRequest` wrapping
+the generated `InitTranscriptionRequest`, so that
+`with_diarization(DiarizationConfigDto { .. })` sets both the flag and the config. The
+generated builder can express that, just verbosely, as
+`.diarization(Some(true)).diarization_config(Some(...))`, and it cannot enforce that
+the two agree. That is a wrapper over one generated type, not a parallel set of types.
 
 **Mechanics.** Generation is a committed artifact, not a build script: a small
 `xtask` reads `docs/openapi.json` and writes `src/model/generated.rs`, and the output

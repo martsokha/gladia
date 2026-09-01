@@ -206,7 +206,9 @@ impl Client {
         // bodies, so it is installed only when it can actually retry.
         if max_retries > 0 {
             let retry_policy = ExponentialBackoff::builder().build_with_max_retries(max_retries);
-            http = http.with(RetryTransientMiddleware::new_with_policy(retry_policy));
+            http = http.with(IdempotentOnly(RetryTransientMiddleware::new_with_policy(
+                retry_policy,
+            )));
         }
         let http = http.build();
 
@@ -223,6 +225,46 @@ impl Client {
             inner: Arc::new(ClientImpl { http, base_url }),
         })
     }
+}
+
+/// Applies the wrapped retry middleware only to requests that can be replayed safely.
+///
+/// `reqwest-retry` classifies purely on the response status, so a `POST` that timed
+/// out or returned a 5xx is retried like any other request. Gladia's `POST` endpoints
+/// create things and accept no idempotency key, so a retry that lands after the server
+/// already processed the first attempt leaves behind a duplicate upload, or a second
+/// billed transcription job.
+///
+/// `GET` and `DELETE` are idempotent, so they keep the retries.
+struct IdempotentOnly(RetryTransientMiddleware<ExponentialBackoff>);
+
+#[async_trait::async_trait]
+impl reqwest_middleware::Middleware for IdempotentOnly {
+    async fn handle(
+        &self,
+        req: reqwest::Request,
+        extensions: &mut http::Extensions,
+        next: reqwest_middleware::Next<'_>,
+    ) -> reqwest_middleware::Result<ReqwestResponse> {
+        if is_idempotent(req.method()) {
+            self.0.handle(req, extensions, next).await
+        } else {
+            next.run(req, extensions).await
+        }
+    }
+}
+
+/// Whether a method can be repeated without creating something a second time.
+fn is_idempotent(method: &reqwest::Method) -> bool {
+    matches!(
+        *method,
+        reqwest::Method::GET
+            | reqwest::Method::HEAD
+            | reqwest::Method::OPTIONS
+            | reqwest::Method::TRACE
+            | reqwest::Method::PUT
+            | reqwest::Method::DELETE
+    )
 }
 
 #[cfg(test)]

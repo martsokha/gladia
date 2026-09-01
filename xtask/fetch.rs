@@ -71,27 +71,37 @@ pub(crate) fn run(root: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Replaces server-generated timestamp examples with a fixed value.
+/// Pins the timestamp examples the API regenerates on every request.
 ///
-/// The API stamps `new Date()` into the `date`, `before_date`, and `after_date` query
-/// parameter examples, so the served document differs on every request. Pinning them
-/// keeps the vendored copy stable. They are documentation only: nothing in codegen
-/// reads `example`.
+/// The API stamps the current time into the examples for its `date`, `before_date`,
+/// and `after_date` query parameters, so the served document differs on every fetch
+/// while every schema is identical. Pinning them is what makes repeated refreshes
+/// idempotent, and what lets `codegen --check` mean something.
+///
+/// Only those three parameters are touched. The document holds two dozen other
+/// timestamp examples, on `created_at`, `completed_at` and the error envelopes'
+/// `timestamp`, which are static prose; rewriting those would edit the spec rather
+/// than stabilise it.
 ///
 /// Returns how many were rewritten.
 fn normalize(document: &mut Value) -> usize {
     /// The value volatile timestamp examples are pinned to.
     const PINNED: &str = "2026-01-01T00:00:00.000Z";
+    /// The query parameters whose examples the API regenerates.
+    const VOLATILE: [&str; 3] = ["date", "before_date", "after_date"];
 
     fn visit(value: &mut Value, count: &mut usize) {
         match value {
             Value::Object(object) => {
-                if let Some(example @ Value::String(_)) = object.get_mut("example")
-                    && is_timestamp(example.as_str().unwrap_or_default())
-                {
-                    *example = Value::String(PINNED.to_owned());
-                    *count += 1;
+                let volatile = object
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .is_some_and(|name| VOLATILE.contains(&name));
+
+                if volatile {
+                    pin(object, PINNED, count);
                 }
+
                 for nested in object.values_mut() {
                     visit(nested, count);
                 }
@@ -108,6 +118,35 @@ fn normalize(document: &mut Value) -> usize {
     let mut count = 0;
     visit(document, &mut count);
     count
+}
+
+/// Rewrites every timestamp `example` inside one parameter definition.
+fn pin(parameter: &mut serde_json::Map<String, Value>, pinned: &str, count: &mut usize) {
+    fn visit(value: &mut Value, pinned: &str, count: &mut usize) {
+        match value {
+            Value::Object(object) => {
+                if let Some(example @ Value::String(_)) = object.get_mut("example")
+                    && is_timestamp(example.as_str().unwrap_or_default())
+                {
+                    *example = Value::String(pinned.to_owned());
+                    *count += 1;
+                }
+                for nested in object.values_mut() {
+                    visit(nested, pinned, count);
+                }
+            }
+            Value::Array(items) => {
+                for item in items {
+                    visit(item, pinned, count);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    for value in parameter.values_mut() {
+        visit(value, pinned, count);
+    }
 }
 
 /// Whether a string looks like an ISO-8601 instant (`2026-01-01T00:00:00.000Z`).
@@ -142,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    fn volatile_examples_are_pinned_but_others_are_left_alone() {
+    fn only_the_volatile_query_parameters_are_pinned() {
         let mut document = serde_json::json!({
             "paths": {
                 "/v2/pre-recorded": {
@@ -151,6 +190,16 @@ mod tests {
                             { "name": "date", "schema": { "example": "2026-08-31T21:00:37.157Z" } },
                             { "name": "model", "schema": { "example": "solaria-1" } }
                         ]
+                    }
+                }
+            },
+            "components": {
+                "schemas": {
+                    // A static schema example, not something the server regenerates.
+                    "PreRecordedResponse": {
+                        "properties": {
+                            "created_at": { "example": "2026-03-04T05:06:07.008Z" }
+                        }
                     }
                 }
             }
@@ -164,5 +213,11 @@ mod tests {
             "2026-01-01T00:00:00.000Z"
         );
         assert_eq!(parameters[1]["schema"]["example"], "solaria-1");
+
+        let schema = &document["components"]["schemas"]["PreRecordedResponse"];
+        assert_eq!(
+            schema["properties"]["created_at"]["example"], "2026-03-04T05:06:07.008Z",
+            "schema examples are documentation, not volatile"
+        );
     }
 }

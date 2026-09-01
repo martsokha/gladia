@@ -6,7 +6,7 @@ use std::task::{Context, Poll};
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, Stream, StreamExt};
-use reqwest_websocket::{CloseCode, Message as WsMessage, WebSocket};
+use reqwest_websocket::{Message as WsMessage, WebSocket};
 
 use super::message::Message;
 use crate::error::{Error, Result};
@@ -135,23 +135,21 @@ impl AudioSender {
             .map_err(|e| Error::live("could not stop recording", e))
     }
 
-    /// Stops recording and closes the sending half.
+    /// Tells the server no more audio is coming, and gives up the sender.
     ///
-    /// Equivalent to [`stop_recording`] followed by closing the socket's write side.
-    /// The session's stream continues until the server finishes and sends
-    /// [`Message::EndSession`].
+    /// The same request as [`stop_recording`], but it consumes the sender, so it reads
+    /// as the end of the sending half at a call site that has nothing more to send.
+    ///
+    /// The session stays open either way. WebSocket has no half-close: a Close frame
+    /// ends the connection in both directions, and a peer that receives one discards
+    /// anything still in flight, so sending one here would drop the final transcript
+    /// and any summary. The server closes the session itself once post-processing is
+    /// done, which arrives as [`Message::EndSession`]. Keep reading the session's
+    /// stream until it ends.
     ///
     /// [`stop_recording`]: Self::stop_recording
     pub async fn finish(mut self) -> Result<()> {
-        self.stop_recording().await?;
-
-        self.outgoing
-            .send(WsMessage::Close {
-                code: CloseCode::Normal,
-                reason: String::new(),
-            })
-            .await
-            .map_err(|e| Error::live("could not close the session", e))
+        self.stop_recording().await
     }
 }
 
