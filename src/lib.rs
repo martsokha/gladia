@@ -14,8 +14,17 @@ compile_error!(
 mod client;
 mod error;
 
+#[cfg(feature = "live")]
+#[cfg_attr(docsrs, doc(cfg(feature = "live")))]
+pub mod live;
+pub mod model;
+pub mod prerecorded;
+
 #[doc(hidden)]
 pub mod prelude;
 
 pub use crate::client::{Client, ClientBuilder};
 pub use crate::error::{Error, Result};
+#[cfg(feature = "live")]
+pub use crate::live::Live;
+pub use crate::prerecorded::PreRecorded;
